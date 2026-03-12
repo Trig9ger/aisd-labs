@@ -126,6 +126,7 @@ private:
 		Print(Root->Right);
 	};
 
+	//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	bool Insert(Node* Root, int Key) {
 		if (!Root) {
 			Tree = new Node(Key);
@@ -208,20 +209,17 @@ private:
 		return Contains(Root->Right, Key);
 	};
 
-	bool FoundErase(Node* Root) {
+	void FoundErase(Node* Root) {
 		if (!Root->Left) {
 			SmallLeftRotation(Root);
-			delete[] Root->Left;
-			return true;
+			delete[] Root;
 		}
 		else if (!Root->Right) {
 			SmallRightRotation(Root);
-			delete[] Root->Right;
-			return true;
+			delete[] Root;
 		}
 		else if (Root->Height == 1) {
 			delete[] Root;
-			return true;
 		}
 		else {
 			int Difference = Root->Left->Height - Root->Right->Height;
@@ -243,20 +241,28 @@ private:
 					SmallLeftRotation(Root);
 				};
 			};
-			return FoundErase(Root);
 		};
 	};
 
+	//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	bool Erase(Node* Root, int Key) {
-		if (!Root) {
-			return false;
-		};
 		if (Root->Value == Key) {
-			return FoundErase(Root);
+			FoundErase(Root);
 		};
 
-		if (Key > Root->Value) return Erase(Root->Right, Key);
-		return Erase(Root->Left, Key);
+		if (Key > Root->Value) {
+			if (Root->Left->Height - Root->Right->Height = 1) {
+				SmallRightRotation(Root);
+				return Erase(Root);
+			};
+			return Erase(Root->Right);
+		};
+
+		if (Root->Left->Height - Root->Right->Height = -1) {
+			SmallRightRotation(Root);
+			return Erase(Root);
+		};
+		return Erase(Root->Left);
 	};
 
 
@@ -304,6 +310,12 @@ public:
 	bool Contains(int Key) {
 		return Contains(Tree, Key);
 	};
+
+	bool Erase(int Key) {
+		if (!Containse(Key)) return false;
+
+		Erase(Tree, Key);
+	}
 };
 
 int main() {
