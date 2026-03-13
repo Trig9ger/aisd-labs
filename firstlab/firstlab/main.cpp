@@ -292,6 +292,18 @@ private:
 		return Erase(Root->Left);
 	};
 
+	bool StrictlyBalanced(Node* Root) {
+		if (!Root) return true;
+
+		if (StrictlyBalanced(Root->Left) && StrictlyBalanced(Root->Right)) {
+			int Difference = Root->Left->Height - Root->Right->Height;
+			return Difference == 0 || Difference == 1 || Difference == -1;
+		}
+		else {
+			return false;
+		};
+	};
+
 public:
 	BalanceSearch() : Tree(nullptr) {};
 
@@ -348,6 +360,10 @@ public:
 		if (!Containse(Key)) return false;
 
 		return Erase(Tree, Key);
+	};
+
+	bool StrictlyBalanced() {
+		return StrictlyBalanced(Tree);
 	};
 };
 
