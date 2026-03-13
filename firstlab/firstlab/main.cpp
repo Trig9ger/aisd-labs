@@ -34,7 +34,7 @@ private:
 		else {
 			Height = Max(Root->Left->Height, Root->Right->Height);
 		};
-		Root->Height = Height;
+		Root->Height = Height + 1;
 	}
 
 	void ChangeAfter(Node* Root, int TargetValue) {
@@ -71,6 +71,7 @@ private:
 
 	void SmallLeftRotation(Node* FirstNode) {
 		Node* SecondNode = FirstNode->Right;
+
 		FirstNode->Right = SecondNode->Left;
 		SecondNode->Left = FirstNode;
 
@@ -81,6 +82,7 @@ private:
 	}
 	void SmallRightRotation(Node* FirstNode) {
 		Node* SecondNode = FirstNode->Left;
+
 		FirstNode->Left = SecondNode->Right;
 		SecondNode->Right = FirstNode;
 
@@ -90,13 +92,35 @@ private:
 		ChangeAfterRotation(Tree, FirstNode->Value, SecondNode);
 	}	 
 
-	void BigLeftRotation(Node* CoreNode) {
-		SmallRightRotation(CoreNode->Right);
-		SmallLeftRotation(CoreNode);
+	void BigLeftRotation(Node* FirstNode) {
+		Node* SecondNode = FirstNode->Right;
+		Node* ThirdNode = FirstNode->Right->Left;
+
+		SecondNode->Left = ThirdNode->Right;
+		ThirdNode->Right = SecondNode;
+		FirstNode->Right = ThirdNode->Left;
+		ThirdNode->Left = FirstNode;
+
+		DoHeight(FirstNode);
+		DoHeight(SecondNode);
+		DoHeight(ThirdNode);
+
+		ChangeAfterRotation(Tree, FirstNode->Value, ThirdNode);
 	};
-	void BigRightRotation(Node* CoreNode) {
-		SmallLeftRotation(CoreNode->Left);
-		SmallRightRotation(CoreNode);
+	void BigRightRotation(Node* FirstNode) {
+		Node* SecondNode = FirstNode->Left;
+		Node* ThirdNode = FirstNode->Left->Right;
+
+		SecondNode->Right = ThirdNode->Left;
+		ThirdNode->Left = SecondNode;
+		FirstNode->Left = ThirdNode->Right;
+		ThirdNode->Right = FirstNode;
+
+		DoHeight(FirstNode);
+		DoHeight(SecondNode);
+		DoHeight(ThirdNode);
+
+		ChangeAfterRotation(Tree, FirstNode->Value, ThirdNode);
 	};
 
 	void CopyNode(const Node* OtherNode, Node*& Root) {
@@ -126,18 +150,9 @@ private:
 		Print(Root->Right);
 	};
 
-	//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	bool Insert(Node* Root, int Key) {
-		if (!Root) {
-			Tree = new Node(Key);
-			return true;
-		};
-		if (Root->Value == Key) {
-			return false;
-		}
-
 		//left
-		else if (Key < Root->Value) {
+		if (Key < Root->Value) {
 			if (!Root->Left) {
 				Root->Left = new Node(Key);
 				ChangeAfter(Tree, Root->Value);
@@ -145,18 +160,25 @@ private:
 			};
 
 			Node* NewRoot = Root->Left;
+			
+			if (!Root->Right) {
+				SmallRightRotation(Root);
+				NewRoot->Left = new Node(Key);
+				return true;
+			};
+
 
 			if (Root->Left->Height - Root->Right->Height == 1) {
 				if (Key < Root->Left->Value) {
 					SmallRightRotation(Root);
 				}
-				else if (Key > Root->Left->Value) {
+				else {
 					if (!Root->Left->Right) {
 						Root->Left->Right = new Node(Key);
-						ChangeAfter(Tree, Root->Left->Value);
 						BigRightRotation(Root);
 						return true;
 					};
+
 					NewRoot = NewRoot->Right;
 					BigRightRotation(Root);
 				};
@@ -175,17 +197,23 @@ private:
 
 			Node* NewRoot = Root->Right;
 
+			if (!Root->Left) {
+				SmallLeftRotation(Root);
+				NewRoot->Right = new Node(Key);
+				return true;
+			};
+
 			if (Root->Left->Height - Root->Right->Height == -1) {
 				if (Key > Root->Right->Value) {
 					SmallLeftRotation(Root);
 				}
-				else if (Key < Root->Right->Value) {
+				else {
 					if (!Root->Right->Left) {
 						Root->Right->Left = new Node(Key);
-						ChangeAfter(Tree, Root->Right->Value);
 						BigLeftRotation(Root);
 						return true;
 					};
+
 					NewRoot = NewRoot->Left;
 					BigLeftRotation(Root);
 				};
@@ -210,20 +238,17 @@ private:
 	};
 
 	void FoundErase(Node* Root) {
-		if (!Root->Left) {
-			SmallLeftRotation(Root);
+		if (Root->Height == 1) {
 			delete[] Root;
+		}
+		else if (!Root->Left) {
+			SmallLeftRotation(Root);
 		}
 		else if (!Root->Right) {
 			SmallRightRotation(Root);
-			delete[] Root;
-		}
-		else if (Root->Height == 1) {
-			delete[] Root;
 		}
 		else {
-			int Difference = Root->Left->Height - Root->Right->Height;
-			if (Difference == 1) {
+			if (Root->Left->Height - Root->Right->Height == 1) {
 				int LeftDifference = Root->Left->Left->Height - Root->Left->Right->Height;
 				if (LeftDifference == -1) {
 					BigRightRotation(Root);
@@ -242,12 +267,14 @@ private:
 				};
 			};
 		};
+		FoundErase(Root);
 	};
 
-	//!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	bool Erase(Node* Root, int Key) {
 		if (Root->Value == Key) {
 			FoundErase(Root);
+
+			return true;
 		};
 
 		if (Key > Root->Value) {
@@ -264,7 +291,6 @@ private:
 		};
 		return Erase(Root->Left);
 	};
-
 
 public:
 	BalanceSearch() : Tree(nullptr) {};
@@ -304,6 +330,13 @@ public:
 	};
 
 	bool Insert(int Key) {
+		if (Containse(Key)) return false; 
+		
+		if (!Tree) {
+			Tree = new Node(Key);
+			return true;
+		};
+
 		return Insert(Tree, Key);
 	};
 
@@ -314,20 +347,10 @@ public:
 	bool Erase(int Key) {
 		if (!Containse(Key)) return false;
 
-		Erase(Tree, Key);
-	}
+		return Erase(Tree, Key);
+	};
 };
 
 int main() {
-	Node* Root = new Node(1);
-	Root->Right = new Node(2);
-	Root->Left = new Node(2);
 
-	Node* RootOne = Root->Right;
-	RootOne->Right = new Node(3);
-	RootOne->Left = new Node(3);
-
-	Node* RootTwo = RootOne->Right;
-	RootTwo->Right = new Node(4);
-	RootTwo->Left = new Node(4);
 };
