@@ -1,14 +1,8 @@
 #include <iostream>
+#include <random>
+#include <chrono>
 
 using namespace ::std;
-
-struct Node {
-	int Value;
-	int Height;
-	Node* Left;
-	Node* Right;
-	Node(int Number) : Value(Number), Height(1), Left(nullptr), Right(nullptr) {};
-};
 
 int Max(int Right, int Left) {
 	if (Right >= Left) return Right;
@@ -17,82 +11,55 @@ int Max(int Right, int Left) {
 
 class BalanceSearch {
 private: 
+	struct Node {
+		int Value;
+		int Height;
+		Node* Left;
+		Node* Right;
+		Node(int Number) : Value(Number), Height(1), Left(nullptr), Right(nullptr) {};
+	};
+
+
 	Node* Tree;
 
-	
-	void DoHeight(Node* Root) {
-		int Height = 0;
-		if (!Root->Right and !Root->Left){
-			Height = 0;
-		}
-		else if (!Root->Left) {
-			Height = Root->Right->Height;
-		}
-		else if (!Root->Right) {
-			Height = Root->Left->Height;
-		}
-		else {
-			Height = Max(Root->Left->Height, Root->Right->Height);
-		};
-		Root->Height = Height + 1;
-	}
 
-	void ChangeAfter(Node* Root, int TargetValue) {
-		if (TargetValue < Root->Value) {
-			ChangeAfter(Root->Left, TargetValue);
-		}
-		else {
-			ChangeAfter(Root->Right, TargetValue);
-		};
-		DoHeight(Root);
+	int GetHeight(Node* Root) {
+		if (!Root) return 0;
+		return Root->Height;
 	};
-	void ChangeAfterRotation(Node* Root, int TargetValue, Node* ChangeNode) {
-		if (Root->Value == TargetValue) Tree = ChangeNode; {}
-
-		if (TargetValue < Root->Value) {
-			if (TargetValue == Root->Left->Value) {
-				Root->Left = ChangeNode;
-			}
-			else {
-				ChangeAfterRotation(Root->Left, TargetValue, ChangeNode);
-			};
-		}
-		else {
-			if (TargetValue == Root->Right->Value) {
-				Root->Right = ChangeNode;
-			}
-			else {
-				ChangeAfterRotation(Root->Right, TargetValue, ChangeNode);
-			};
-		};
-
-		DoHeight(Root);
+	void UpdateHeight(Node* Root) {
+		if (!Root) return;
+		Root->Height = Max(GetHeight(Root->Left), GetHeight(Root->Right)) + 1;
+	};
+	int GetBalance(Node* Root) {
+		if (!Root) return 0;
+		return GetHeight(Root->Left) - GetHeight(Root->Right);
 	};
 
-	void SmallLeftRotation(Node* FirstNode) {
+	Node* SmallLeftRotation(Node* FirstNode) {
 		Node* SecondNode = FirstNode->Right;
 
 		FirstNode->Right = SecondNode->Left;
 		SecondNode->Left = FirstNode;
 
-		DoHeight(FirstNode);
-		DoHeight(SecondNode);
+		UpdateHeight(FirstNode);
+		UpdateHeight(SecondNode);
 
-		ChangeAfterRotation(Tree, FirstNode->Value, SecondNode);
+		return SecondNode;
 	}
-	void SmallRightRotation(Node* FirstNode) {
+	Node* SmallRightRotation(Node* FirstNode) {
 		Node* SecondNode = FirstNode->Left;
 
 		FirstNode->Left = SecondNode->Right;
 		SecondNode->Right = FirstNode;
 
-		DoHeight(FirstNode);
-		DoHeight(SecondNode);
+		UpdateHeight(FirstNode);
+		UpdateHeight(SecondNode);
 
-		ChangeAfterRotation(Tree, FirstNode->Value, SecondNode);
+		return SecondNode;
 	}	 
 
-	void BigLeftRotation(Node* FirstNode) {
+	Node* BigLeftRotation(Node* FirstNode) {
 		Node* SecondNode = FirstNode->Right;
 		Node* ThirdNode = FirstNode->Right->Left;
 
@@ -101,13 +68,13 @@ private:
 		FirstNode->Right = ThirdNode->Left;
 		ThirdNode->Left = FirstNode;
 
-		DoHeight(FirstNode);
-		DoHeight(SecondNode);
-		DoHeight(ThirdNode);
+		UpdateHeight(FirstNode);
+		UpdateHeight(SecondNode);
+		UpdateHeight(ThirdNode);
 
-		ChangeAfterRotation(Tree, FirstNode->Value, ThirdNode);
+		return ThirdNode;
 	};
-	void BigRightRotation(Node* FirstNode) {
+	Node* BigRightRotation(Node* FirstNode) {
 		Node* SecondNode = FirstNode->Left;
 		Node* ThirdNode = FirstNode->Left->Right;
 
@@ -116,11 +83,27 @@ private:
 		FirstNode->Left = ThirdNode->Right;
 		ThirdNode->Right = FirstNode;
 
-		DoHeight(FirstNode);
-		DoHeight(SecondNode);
-		DoHeight(ThirdNode);
+		UpdateHeight(FirstNode);
+		UpdateHeight(SecondNode);
+		UpdateHeight(ThirdNode);
 
-		ChangeAfterRotation(Tree, FirstNode->Value, ThirdNode);
+		return ThirdNode;
+	};
+
+	Node* UpdateBalance(Node* Root) {
+		int Balance = GetBalance(Root);
+
+		if (!Root) return Root;
+
+		if (Balance == 2) {
+			if (GetBalance(Root->Left) == -1) return BigRightRotation(Root);
+			else return SmallRightRotation(Root);
+		}
+		else if (Balance == -2) {
+			if (GetBalance(Root->Right) == 1) return BigLeftRotation(Root);
+			else return SmallLeftRotation(Root);
+		}
+		else return Root;
 	};
 
 	void CopyNode(const Node* OtherNode, Node*& Root) {
@@ -140,163 +123,95 @@ private:
 		Clear(Root->Left);
 		Clear(Root->Right);
 
-		delete[] Root;
+		delete Root;
 	};
 
 	void Print(Node* Root) {
 		if (!Root) return;
 		Print(Root->Left);
-		cout << Root->Value << "  ";
+		cout << Root->Value << " ";
 		Print(Root->Right);
 	};
 
-	bool Insert(Node* Root, int Key) {
-		//left
-		if (Key < Root->Value) {
-			if (!Root->Left) {
-				Root->Left = new Node(Key);
-				ChangeAfter(Tree, Root->Value);
-				return true;
-			};
+	Node* Insert(Node* Root, int Key) {
+		if (!Root) return new Node(Key);
+		else if (Key < Root->Value) Root->Left = Insert(Root->Left, Key);
+		else Root->Right = Insert(Root->Right, Key);
+		
+		UpdateHeight(Root);
 
-			Node* NewRoot = Root->Left;
-			
-			if (!Root->Right) {
-				SmallRightRotation(Root);
-				NewRoot->Left = new Node(Key);
-				return true;
-			};
-
-
-			if (Root->Left->Height - Root->Right->Height == 1) {
-				if (Key < Root->Left->Value) {
-					SmallRightRotation(Root);
-				}
-				else {
-					if (!Root->Left->Right) {
-						Root->Left->Right = new Node(Key);
-						BigRightRotation(Root);
-						return true;
-					};
-
-					NewRoot = NewRoot->Right;
-					BigRightRotation(Root);
-				};
-			};
-
-			return Insert(NewRoot, Key);
-		}
-
-		//right
-		else {
-			if (!Root->Right) {
-				Root->Right = new Node(Key);
-				ChangeAfter(Tree, Root->Value);
-				return true;
-			};
-
-			Node* NewRoot = Root->Right;
-
-			if (!Root->Left) {
-				SmallLeftRotation(Root);
-				NewRoot->Right = new Node(Key);
-				return true;
-			};
-
-			if (Root->Left->Height - Root->Right->Height == -1) {
-				if (Key > Root->Right->Value) {
-					SmallLeftRotation(Root);
-				}
-				else {
-					if (!Root->Right->Left) {
-						Root->Right->Left = new Node(Key);
-						BigLeftRotation(Root);
-						return true;
-					};
-
-					NewRoot = NewRoot->Left;
-					BigLeftRotation(Root);
-				};
-			};
-
-			return Insert(NewRoot, Key);
-		};
+		return UpdateBalance(Root);
 	};
 
 	bool Contains(Node* Root, int Key) {
-		if (!Root) {
-			return false;
-		};
+		if (!Root) return false;
 
-		if (Root->Value == Key) {
-			return true;
-		}
-		else if (Key < Root->Value) {
-			return Contains(Root->Left, Key);
-		};
+		if (Root->Value == Key) return true;
+
+		else if (Key < Root->Value) return Contains(Root->Left, Key);
+
 		return Contains(Root->Right, Key);
 	};
 
-	void FoundErase(Node* Root) {
+	Node* FoundErase(Node* Root) {
+		Node* NewRoot;
 		if (Root->Height == 1) {
-			delete[] Root;
-		}
-		else if (!Root->Left) {
-			SmallLeftRotation(Root);
+			delete Root;
+			return nullptr;
 		}
 		else if (!Root->Right) {
-			SmallRightRotation(Root);
+			NewRoot = SmallRightRotation(Root);
+			delete Root;
+			return NewRoot;
+		}
+		else if (!Root->Left) {
+			NewRoot = SmallLeftRotation(Root);
+			delete Root;
+			return NewRoot;
 		}
 		else {
-			if (Root->Left->Height - Root->Right->Height == 1) {
-				int LeftDifference = Root->Left->Left->Height - Root->Left->Right->Height;
-				if (LeftDifference == -1) {
-					BigRightRotation(Root);
-				}
-				else {
-					SmallRightRotation(Root);
-				};
+			int Balance = GetBalance(Root);
+
+			if (Balance == 1) {
+				if (GetBalance(Root->Left) == -1) NewRoot = BigRightRotation(Root);
+				else NewRoot = SmallRightRotation(Root);
+				
+				NewRoot->Right = FoundErase(Root);
+			}
+			else if (Balance == -1) {
+				if (GetBalance(Root->Right) == 1) NewRoot = BigLeftRotation(Root);
+				else NewRoot = SmallLeftRotation(Root);
+
+				NewRoot->Left = FoundErase(Root);
 			}
 			else {
-				int RightDifference = Root->Right->Left->Height - Root->Right->Right->Height;
-				if (RightDifference == 1) {
-					BigLeftRotation(Root);
-				}
-				else {
-					SmallLeftRotation(Root);
-				};
+				NewRoot = SmallLeftRotation(Root);
+				
+				NewRoot->Left = FoundErase(Root);
 			};
 		};
-		FoundErase(Root);
+
+		UpdateHeight(NewRoot);
+		return UpdateBalance(NewRoot);
 	};
 
-	bool Erase(Node* Root, int Key) {
-		if (Root->Value == Key) {
-			FoundErase(Root);
+	Node* Erase(Node* Root, int Key) {
 
-			return true;
-		};
+		if (Key == Root->Value) Root = FoundErase(Root);
 
-		if (Key > Root->Value) {
-			if (Root->Left->Height - Root->Right->Height = 1) {
-				SmallRightRotation(Root);
-				return Erase(Root);
-			};
-			return Erase(Root->Right);
-		};
+		else if (Key < Root->Value) Root->Left = Erase(Root->Left, Key);
 
-		if (Root->Left->Height - Root->Right->Height = -1) {
-			SmallRightRotation(Root);
-			return Erase(Root);
-		};
-		return Erase(Root->Left);
+		else Root->Right = Erase(Root->Right, Key);
+
+		UpdateHeight(Root);
+		return UpdateBalance(Root);
 	};
 
 	bool StrictlyBalanced(Node* Root) {
 		if (!Root) return true;
 
 		if (StrictlyBalanced(Root->Left) && StrictlyBalanced(Root->Right)) {
-			int Difference = Root->Left->Height - Root->Right->Height;
+			int Difference = GetHeight(Root->Left) - GetHeight(Root->Right);
 			return Difference == 0 || Difference == 1 || Difference == -1;
 		}
 		else {
@@ -342,24 +257,22 @@ public:
 	};
 
 	bool Insert(int Key) {
-		if (Containse(Key)) return false; 
-		
-		if (!Tree) {
-			Tree = new Node(Key);
-			return true;
-		};
+		if (Contains(Tree, Key)) return false;
 
-		return Insert(Tree, Key);
+		Tree = Insert(Tree, Key);
+		return true;
 	};
 
 	bool Contains(int Key) {
+
 		return Contains(Tree, Key);
 	};
 
 	bool Erase(int Key) {
-		if (!Containse(Key)) return false;
+		if (!Contains(Tree, Key)) return false;
 
-		return Erase(Tree, Key);
+		Tree = Erase(Tree, Key);
+		return true;
 	};
 
 	bool StrictlyBalanced() {
@@ -367,6 +280,59 @@ public:
 	};
 };
 
-int main() {
+void RandFill(size_t n) {
+	BalanceSearch Tree;
+	random_device rd;
+	mt19937 gen(rd());
+	uniform_int_distribution<>  dist(1, n);
 
+	for (int i = 0; i < n; ++i) {
+		while (true) {
+			int Number = dist(gen);
+			if (Tree.Insert(Number)) {
+				break;
+			};
+		};
+	};
+};
+
+vector<int> RepeatedVector(vector<int> Arr) {
+	BalanceSearch ExampleTree;
+	BalanceSearch ResultTree;
+	vector<int> ResultArr;
+
+	for (size_t i = 0; i < Arr.size(); ++i) {
+		if (!ExampleTree.Insert(Arr[i])) ResultTree.Insert(Arr[i]);
+	};
+
+	for (size_t i = 0; i < Arr.size(); ++i) {
+		if (ResultTree.Contains(Arr[i])) {
+			ResultArr.push_back(Arr[i]);
+
+			ResultTree.Erase(Arr[i]);
+		};
+	};
+
+	return ResultArr;
+}
+
+int main() {
+	//vector<int> Arr1 = { 5, 2, 5, 7, 1, 2 };
+
+	auto begin = chrono::high_resolution_clock::now();
+
+	RandFill(100000);
+
+	auto end = chrono::high_resolution_clock::now();
+
+	auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
+	auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
+	auto seconds = std::chrono::duration_cast<std::chrono::seconds>(end - begin);
+
+	cout << microseconds.count() << '\n';
+	cout << milliseconds.count() << '\n';
+	cout << seconds.count() << '\n';
+
+
+	//vector<int> Arr2 = RepeatedVector(Arr1);
 };
