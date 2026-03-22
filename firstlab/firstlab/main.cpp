@@ -89,7 +89,7 @@ private:
 
 		return ThirdNode;
 	};
-
+	
 	Node* UpdateBalance(Node* Root) {
 		int Balance = GetBalance(Root);
 
@@ -153,58 +153,51 @@ private:
 		return Contains(Root->Right, Key);
 	};
 
-	Node* FoundErase(Node* Root) {
-		Node* NewRoot;
-		if (Root->Height == 1) {
-			delete Root;
-			return nullptr;
+	Node* FindMin(Node* Root) {
+		while (Root->Left != nullptr) {
+			Root = Root->Left;
 		}
-		else if (!Root->Right) {
-			NewRoot = SmallRightRotation(Root);
-			delete Root;
-			return NewRoot;
-		}
-		else if (!Root->Left) {
-			NewRoot = SmallLeftRotation(Root);
-			delete Root;
-			return NewRoot;
-		}
-		else {
-			int Balance = GetBalance(Root);
-
-			if (Balance == 1) {
-				if (GetBalance(Root->Left) == -1) NewRoot = BigRightRotation(Root);
-				else NewRoot = SmallRightRotation(Root);
-				
-				NewRoot->Right = FoundErase(Root);
-			}
-			else if (Balance == -1) {
-				if (GetBalance(Root->Right) == 1) NewRoot = BigLeftRotation(Root);
-				else NewRoot = SmallLeftRotation(Root);
-
-				NewRoot->Left = FoundErase(Root);
-			}
-			else {
-				NewRoot = SmallLeftRotation(Root);
-				
-				NewRoot->Left = FoundErase(Root);
-			};
-		};
-
-		UpdateHeight(NewRoot);
-		return UpdateBalance(NewRoot);
+		return Root;
 	};
 
 	Node* Erase(Node* Root, int Key) {
 
-		if (Key == Root->Value) Root = FoundErase(Root);
+		if (Key == Root->Value) {
+			Node* NewRoot = nullptr;
+			if (Root->Height == 1) {
+				delete Root;
+				return nullptr;
+			}
+			else if (!Root->Right) {
+				NewRoot = Root->Left;
+				delete Root;
+				return NewRoot;
+			}
+			else if (!Root->Left) {
+				NewRoot = Root->Right;
+				delete Root;
+				return NewRoot;
+			}
+			else {
+				Node* successor = FindMin(Root->Right);
+
+				Root->Value = successor->Value;
+
+				Root->Right = Erase(Root->Right, successor->Value);
+				return Root;
+			};
+		}
 
 		else if (Key < Root->Value) Root->Left = Erase(Root->Left, Key);
 
 		else Root->Right = Erase(Root->Right, Key);
 
-		UpdateHeight(Root);
-		return UpdateBalance(Root);
+		if (Root != nullptr) {
+			UpdateHeight(Root);
+			Root = UpdateBalance(Root);
+		}
+
+		return Root;
 	};
 
 	bool StrictlyBalanced(Node* Root) {
@@ -280,11 +273,18 @@ public:
 	};
 };
 
-void RandFill(size_t n) {
+size_t lcg() {
+	static size_t x = 0;
+	x = (1021 * x + 24631) % 116640;
+	return x;
+};
+
+
+BalanceSearch RandFill(size_t n) {
 	BalanceSearch Tree;
 	random_device rd;
 	mt19937 gen(rd());
-	uniform_int_distribution<>  dist(1, n);
+	uniform_int_distribution<>  dist(1, n*10);
 
 	for (int i = 0; i < n; ++i) {
 		while (true) {
@@ -293,6 +293,104 @@ void RandFill(size_t n) {
 				break;
 			};
 		};
+	};
+
+	return Tree;
+};
+
+void CheckTime() {
+	int N = 1000;
+
+	cout << "Filling the tree\n";
+
+	//заполнение
+	double AddTime = 0;
+	
+	while (true){
+		for (int i = 0; i < 100; ++i) {
+			auto Begin = chrono::high_resolution_clock::now();
+
+			RandFill(N);
+
+			auto End = chrono::high_resolution_clock::now();
+			chrono::duration<double> seconds = End - Begin;
+			AddTime += seconds.count();
+		};
+		AddTime /= 100;
+
+		cout << AddTime << " with " << N << " elements." << '\n';
+
+		AddTime = 0;
+
+		if (N == 100000) {
+			N = 1000;
+			break;
+		};
+		N *= 10;
+	}
+
+	cout << "\nFind random element\n";
+
+	//нахождение
+	double FindTime = 0;
+
+	while (true){
+		uniform_int_distribution<>  dist(1, N*10);
+		BalanceSearch Tree = RandFill(N);
+		
+		for(int i = 1; i < 1000; ++i) {
+			auto Begin = chrono::high_resolution_clock::now();
+
+			Tree.Contains(lcg());
+
+			auto End = chrono::high_resolution_clock::now();
+			chrono::duration<double> seconds = End - Begin;
+			FindTime += seconds.count();
+		};
+		FindTime /= 1000;
+
+		cout << FindTime << " with " << N << " elements.\n";
+
+		FindTime = 0;
+
+		if (N == 100000) {
+			N = 1000;
+			break;
+		};
+		N *= 10;
+	}
+	
+	cout << "\nAdd and erase random element\n";
+
+	//добавление и удаление//добавление и удаление
+	double ElementTime = 0;
+
+	while (true) {
+		BalanceSearch Tree = RandFill(N);
+		for (int i = 1; i < 1000; ++i) {
+			int Number = lcg();
+
+			auto Begin = chrono::high_resolution_clock::now();
+
+			while (!Tree.Insert(Number)) {
+				Number = lcg();
+			};
+			Tree.Erase(Number);
+
+			auto End = chrono::high_resolution_clock::now();
+			chrono::duration<double> seconds = End - Begin;
+			ElementTime += seconds.count();
+		};
+		ElementTime /= 1000;
+
+		cout << ElementTime << " with " << N << " elements.\n";
+
+		ElementTime = 0;
+
+		if (N == 100000) {
+			break;
+		};
+		N *= 10;
 	};
 };
 
@@ -317,22 +415,11 @@ vector<int> RepeatedVector(vector<int> Arr) {
 }
 
 int main() {
+	//CheckTime();
+
+
+
 	//vector<int> Arr1 = { 5, 2, 5, 7, 1, 2 };
-
-	auto begin = chrono::high_resolution_clock::now();
-
-	RandFill(100000);
-
-	auto end = chrono::high_resolution_clock::now();
-
-	auto microseconds = std::chrono::duration_cast<std::chrono::microseconds>(end - begin);
-	auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin);
-	auto seconds = std::chrono::duration_cast<std::chrono::seconds>(end - begin);
-
-	cout << microseconds.count() << '\n';
-	cout << milliseconds.count() << '\n';
-	cout << seconds.count() << '\n';
-
 
 	//vector<int> Arr2 = RepeatedVector(Arr1);
 };
